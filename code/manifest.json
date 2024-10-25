@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "DiningCalsTest",
+    "version": "1.0",
+    "description": "Shows nutrition information for Cornell dining items",
+    "permissions": [
+      "https://trackapi.nutritionix.com/",
+      "https://now.dining.cornell.edu/"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["https://now.dining.cornell.edu/*"],
+        "js": ["content.js"]
+      }
+    ]
+  }
