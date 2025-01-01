@@ -42,27 +42,33 @@ async function getNutritionInfo(foodItem){
                 timezone: "US/Eastern"
             })
         });
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
 
         const data = await response.json();
-        if( !data.foods || !data.foods[0]){
+
+        if( !data.foods){
             throw new Error('Request came back empty!');
+        }else if (!data.foods?.[0]){
+            throw new Error("Request returned no new nutrition information")
         }
 
         const nutrition = {
-            calories: Math.round(data.foods[0].nf_calories),
-            protein: Math.round(data.foods[0].nf_protein),
-            carbs: Math.round(data.foods[0].nf_total_carbohydrates),
-            fat: Math.round(data.foods[0].nf_total_fat),
-            serving_size: Math.round(data.foods[0].serving_qty), 
-            serving_unit: Math.round(data.foods[0].serving_unit)        
+            calories: Math.round(data.foods?.[0].nf_calories),
+            protein: Math.round(data.foods?.[0].nf_protein),
+            carbs: Math.round(data.foods?.[0].nf_total_carbohydrate),
+            fat: Math.round(data.foods?.[0].nf_total_fat),
+            serving_size: data.foods?.[0].serving_qty, 
+            serving_unit: data.foods?.[0].serving_unit     
         }
 
         nutritionCache.set(foodItem, nutrition)
         return nutrition;
 
     }catch (error){
-        console.error("There was an error: ", error);
-        return null;
+        console.error("Error fetching nutrition info:", error);
+        return { error: "Nutrition info unavailable" };
     }
 }
 
@@ -78,7 +84,7 @@ function formatNutritionInfo(nutrition){
         Protein: ${nutrition.protein}g
         Carbs: ${nutrition.carbs}g
         Fat: ${nutrition.fat}g
-    `.trim.replace(/\n\s+/g, '<br>')
+    `.trim().replace(/\n\s+/g, '<br>')
 }
 
 function showToolTip(event, content){
@@ -93,14 +99,14 @@ function showToolTip(event, content){
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight; 
 
-    if (x + tooltipRect.width > viewportWidth) {
-        tooltip.style.left = (x - tooltipRect.width - 10) + 'px';
+    if (x + toolTipRect.width > viewportWidth) {
+        tooltip.style.left = `${Math.min(x, viewportWidth - toolTipRect.width - 10)}px`;
     } else {
         tooltip.style.left = x + 'px';
     }
     
-    if (y + tooltipRect.height > viewportHeight) {
-        tooltip.style.top = (y - tooltipRect.height - 10) + 'px';
+    if (y + toolTipRect.height > viewportHeight) {
+        tooltip.style.top = `${Math.min(y, viewportHeight - toolTipRect.height - 10)}px`;
     } else {
         tooltip.style.top = y + 'px';
     }
@@ -114,12 +120,13 @@ function hideToolTip(){
 function initNutritionTooltips(){
 
     //Update these selectors based on Cornell's actual HTML structure
-    const menuItems = document.querySelectorAll('.accordion-content');
+    const menuItems = document.querySelectorAll('.eatery-menu.eatery-info');
 
     menuItems.forEach(section => {
 
         const foodString = section.textContent.trim();
-        const foodItems = foodString.split(" • ");
+        // const foodItems = foodString.split(" • ");
+        const foodItems = foodString.split(" * ")
 
         foodItems.forEach(foodItem => {
             const span = document.createElement('span');
@@ -129,21 +136,19 @@ function initNutritionTooltips(){
 
             span.addEventListener('mouseenter', async (event) => {                
                 // Show loading state
-                showTooltip(event, 'Loading nutrition info...');
+                showToolTip(event, 'Loading nutrition info...');
                 
                 // Fetch nutrition info
                 const nutrition = await getNutritionInfo(foodItem.trim());
                 
                 // Update tooltip with nutrition info
                 if (span.matches(':hover')) { // Only update if still hovering
-                    showTooltip(event, formatNutritionInfo(nutrition));
+                    showToolTip(event, formatNutritionInfo(nutrition));
                 }
             });
+            span.addEventListener('mouseleave', () => hideToolTip());
         });
 
-        span.addEventListener('mouseleave', () => {
-            hideTooltip();
-        });
     });
 }
 
